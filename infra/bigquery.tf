@@ -90,7 +90,7 @@ resource "google_bigquery_job" "seed_category_limits" {
       UNION ALL SELECT 'OTHER', NUMERIC '100.00', NUMERIC '1000.00', 'MXN', TRUE
     SQL
     use_legacy_sql    = false
-    write_disposition = "WRITE_TRUNCATE_DATA"
+    write_disposition = "WRITE_TRUNCATE"
 
     destination_table {
       project_id = var.project_id
