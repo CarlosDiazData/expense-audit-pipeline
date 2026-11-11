@@ -32,14 +32,14 @@ Assumptions (from design section 14): MXN demo invoices; no currency conversion;
 
 ## Tasks
 
-- **T1** Scaffold project: `pyproject.toml`, package skeleton, config, Makefile base, tooling. Route: inline. Done, commit `chore: scaffold python project`.
-- **T2** Domain models, validation, and policy engine with unit tests (S7, S9-S16). Route: inline. Done, commit `feat(domain): validation and policy engine`.
-- **T3** Adapters: Gemini, BigQuery, GCS, Secret Manager with fake-based tests (S6, S8, S17, S18). Route: inline. Done, commit `feat(adapters): gcp adapters`.
-- **T4** Processor orchestration + Cloud Function entrypoint with integration tests (S1, S5, S6, S17). Route: inline. Done, commit `feat(processor): processing orchestration`.
-- **T5** Upload web service, HTML/JS UI, tests (S2-S4, S21). Route: inline. Done, commit `feat(upload): fastapi upload service`.
-- **T6** Terraform infrastructure and seed (S19, S18). Route: inline. Done, commit `feat(infra): terraform infrastructure`.
-- **T7** Sample generator, six synthetic PDFs, e2e script (S20). Route: inline. Done, commit `feat(samples): synthetic invoices and e2e script`.
-- **T8** README, final Makefile, CI workflow, final checks (S20). Route: inline. Done, commit `docs: readme and delivery docs`.
+- **T1** Scaffold project: `pyproject.toml`, package skeleton, config, Makefile base, tooling. Route: inline. Done, commit `3384eb8`.
+- **T2** Domain models, validation, and policy engine with unit tests (S7, S9-S16). Route: inline. Done, commit `2679b95`.
+- **T3** Adapters: Gemini, BigQuery, GCS, Secret Manager with fake-based tests (S6, S8, S17, S18). Route: inline. Done, commit `1943f4a`.
+- **T4** Processor orchestration + Cloud Function entrypoint with integration tests (S1, S5, S6, S17). Route: inline. Done, commit `ec46e94`.
+- **T5** Upload web service, HTML/JS UI, tests (S2-S4, S21). Route: inline. Done, commit `b419163`.
+- **T6** Terraform infrastructure and seed (S19, S18). Route: inline. Done, commit `ff00929`.
+- **T7** Sample generator, six synthetic PDFs, e2e script (S20). Route: inline. Done, commit `c9b876a`.
+- **T8** README, final Makefile, CI workflow, final checks (S20). Route: inline. Done, commit `b8a89a6`.
 
 ## Log
 
@@ -47,3 +47,8 @@ Assumptions (from design section 14): MXN demo invoices; no currency conversion;
 - Context: previous session ended after committing the approved design spec (`36bb7d1`). No implementation files existed and Engram had no observations. Resume point = implement the approved design.
 - **L2 (2026-11-11):** Implementation strategy: hexagonal layout from design section 10, tests written first per task where runnable, work-unit commits per task. Terraform validated with `terraform validate`/`fmt -check`.
 - Evidence: branch `feat/expense-audit-pipeline` created from `master` at `36bb7d1`.
+
+- **L3 (2026-11-11):** Implemented T1-T7 inline. No Writer trigger held: no parallel independent units and the parent context stayed bounded, so no delegated writer was launched. Tests were written before each unit; RED was observed for the domain (missing modules), and adapter tests initially exposed BigQuery DATE parameter normalization (fixed by asserting the normalized `date` value).
+- **L4 (2026-11-11):** Verification evidence observed locally: `pytest` 88 passed; `ruff check` clean; `ruff format --check` 28 files formatted; `terraform validate` success; `terraform fmt -check -recursive` clean. Not run: Docker image build and live GCP deploy (no image push or cloud mutation was authorized in this session).
+- **L5 (2026-11-11):** Delivery forecast: 4743 authored changed lines across 7 work-unit commits, above the ~400-line review budget. Delivery strategy is `ask-on-risk`; PR slicing/chain strategy remains a user decision. No push and no PR were performed.
+- **Risk:** item 2 (access code, Secret Manager, least-privilege IAM), item 5 (Terraform deploy, dependencies, installers), item 6 (live GCP behavior is not covered by local tests).
