@@ -1,0 +1,6 @@
+# Runtime dependencies for the Cloud Function Gen2 processor.
+functions-framework>=3.7
+pydantic>=2.7
+google-cloud-storage>=2.18
+google-cloud-bigquery>=3.25
+google-genai>=1.0

@@ -26,9 +26,7 @@ def test_reads_latest_secret_version_and_decodes():
     provider = SecretAccessCodeProvider(client, project="demo", secret_name="access-code")
 
     assert provider.get() == "super-secret-code"
-    assert client.requests == [
-        {"name": "projects/demo/secrets/access-code/versions/latest"}
-    ]
+    assert client.requests == [{"name": "projects/demo/secrets/access-code/versions/latest"}]
 
 
 def test_caches_secret_value_between_calls():
