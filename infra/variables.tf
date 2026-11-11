@@ -18,7 +18,13 @@ variable "company_rfc" {
 variable "gemini_model" {
   description = "Vertex AI Gemini model used for extraction."
   type        = string
-  default     = "gemini-2.5-flash"
+  default     = "gemini-3.8-flash"
+}
+
+variable "gemini_location" {
+  description = "Vertex AI location for Gemini. Gemini 3.8 Flash is available in global."
+  type        = string
+  default     = "global"
 }
 
 variable "access_code" {

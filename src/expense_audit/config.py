@@ -15,8 +15,8 @@ class Settings:
     access_code_secret: str = "expense-audit-access-code"
     max_upload_mb: int = 10
     rate_limit_per_hour: int = 10
-    gemini_model: str = "gemini-2.5-flash"
-    gemini_location: str = "us-central1"
+    gemini_model: str = "gemini-3.8-flash"
+    gemini_location: str = "global"
     company_rfc: str | None = None
     gcs_allowed_bucket: str = ""
     max_attempts: int = 5
@@ -31,8 +31,8 @@ class Settings:
             access_code_secret=values.get("ACCESS_CODE_SECRET", "expense-audit-access-code"),
             max_upload_mb=int(values.get("MAX_UPLOAD_MB", "10")),
             rate_limit_per_hour=int(values.get("RATE_LIMIT_PER_HOUR", "10")),
-            gemini_model=values.get("GEMINI_MODEL", "gemini-2.5-flash"),
-            gemini_location=values.get("GEMINI_LOCATION", "us-central1"),
+            gemini_model=values.get("GEMINI_MODEL", "gemini-3.8-flash"),
+            gemini_location=values.get("GEMINI_LOCATION", "global"),
             company_rfc=values.get("COMPANY_RFC") or None,
             gcs_allowed_bucket=values.get("GCS_ALLOWED_BUCKET", ""),
             max_attempts=int(values.get("MAX_ATTEMPTS", "5")),

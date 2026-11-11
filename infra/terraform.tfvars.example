@@ -4,7 +4,8 @@ region     = "us-central1"
 # Optional: enables the RECEPTOR_NOT_COMPANY rule when set.
 company_rfc = ""
 
-gemini_model = "gemini-2.5-flash"
+gemini_model = "gemini-3.8-flash"
+gemini_location = "global"
 
 # Minimum 12 characters; stored in Secret Manager.
 access_code = "change-this-demo-code"

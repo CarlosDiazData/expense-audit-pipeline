@@ -58,7 +58,7 @@ graph TD
 |---|---|
 | Language | Python 3.12 |
 | API | FastAPI, uvicorn, Jinja2 |
-| LLM | Vertex AI Gemini Flash (`gemini-2.5-flash`), structured JSON schema |
+| LLM | Vertex AI Gemini Flash (`gemini-3.8-flash`, `global`), structured JSON schema |
 | Eventing | Eventarc Cloud Storage finalized trigger |
 | Compute | Cloud Run (upload) and Cloud Functions Gen2 (processor) |
 | Storage | Google Cloud Storage (90-day lifecycle) |

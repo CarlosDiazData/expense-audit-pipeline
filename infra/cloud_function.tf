@@ -25,7 +25,7 @@ resource "google_cloudfunctions2_function" "processor" {
       GCP_PROJECT        = var.project_id
       BQ_DATASET         = google_bigquery_dataset.expense_audit.dataset_id
       GEMINI_MODEL       = var.gemini_model
-      GEMINI_LOCATION    = var.region
+      GEMINI_LOCATION    = var.gemini_location
       COMPANY_RFC        = var.company_rfc
       GCS_ALLOWED_BUCKET = google_storage_bucket.landing.name
       MAX_UPLOAD_MB      = tostring(var.max_upload_mb)
