@@ -14,3 +14,11 @@ They are intentionally small PDFs for the demo; they are not real fiscal documen
 
 The e2e script treats `06_noisy_scan.pdf` as a controlled outcome and reports whatever
 the extraction produced.
+
+## Scenario pack
+
+The `scenarios/` directory contains additional invoices for `TOTAL_MISMATCH`,
+`DATE_IN_FUTURE`, `INVALID_AMOUNT`, `CURRENCY_UNSUPPORTED`, `RECEPTOR_NOT_COMPANY`,
+`MISSING_CRITICAL_FIELDS`, tolerance boundaries, each valid category, and a monthly
+budget sequence. See [`scenarios/README.md`](scenarios/README.md) for expected
+outcomes and upload order.
