@@ -21,8 +21,9 @@ class FakeStorage:
     def __init__(self):
         self.objects = {}
 
-    def upload(self, path, data, content_type):
+    def upload(self, path, data, content_type, metadata=None):
         self.objects[path] = (data, content_type)
+        self.metadata = metadata
 
 
 class FakeRepo:
@@ -131,6 +132,7 @@ def test_valid_pdf_is_accepted_and_stored_under_upload_id():
     assert f"uploads/{upload_id}/ticket.pdf" in storage.objects
     assert storage.objects[f"uploads/{upload_id}/ticket.pdf"] == (PDF, "application/pdf")
     assert repo.pending[upload_id] == "ticket.pdf"
+    assert client.app.state.storage.metadata == {"upload_id": upload_id}
 
 
 def test_filename_is_sanitized_before_object_path():
@@ -144,6 +146,7 @@ def test_filename_is_sanitized_before_object_path():
     assert paths[0].startswith(f"uploads/{upload_id}/")
     assert ".." not in paths[0]
     assert " " not in paths[0]
+    assert client.app.state.repo.pending[upload_id] == "../../evil name.pdf"
 
 
 def test_png_and_jpeg_are_accepted():

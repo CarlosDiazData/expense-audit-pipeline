@@ -163,15 +163,17 @@ def test_find_duplicate_returns_none_without_row():
 def test_monthly_spend_returns_decimal():
     adapter, client = repo([[{"spend": Decimal("120.50")}]])
 
-    spend = adapter.monthly_spend("FOOD", 2026, 11)
+    spend = adapter.monthly_spend("FOOD", 2026, 11, exclude_upload_id="u1")
 
     assert spend == Decimal("120.50")
     sql, job_config, _ = client.queries[0]
     assert "policy_status != 'NON_DEDUCTIBLE'" in sql
+    assert "upload_id != @exclude_upload_id" in sql
     values = params(job_config)
     assert values["category"].value == "FOOD"
     assert values["year"].value == 2026
     assert values["month"].value == 11
+    assert values["exclude_upload_id"].value == "u1"
 
 
 def test_monthly_spend_defaults_to_zero():

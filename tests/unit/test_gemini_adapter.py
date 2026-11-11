@@ -50,9 +50,15 @@ def extractor(results, **kwargs):
 def extracted() -> ExtractedExpense:
     return ExtractedExpense(
         rfc_emisor="ABC010101AB1",
+        rfc_receptor="XYZ010101XY2",
         expense_date=date(2026, 11, 5),
+        subtotal=Decimal("100.00"),
+        iva=Decimal("16.00"),
         total=Decimal("116.00"),
+        currency="MXN",
         category=Category.FOOD,
+        vendor_name="Taqueria",
+        description="Working lunch",
     )
 
 
@@ -70,12 +76,17 @@ def test_parses_pydantic_payload_and_sends_structured_config():
 
 
 def test_parses_json_text_when_parsed_is_empty():
-    payload = '{"rfc_emisor":"ABC010101AB1","total":"10.00","category":"FOOD"}'
+    payload = (
+        '{"rfc_emisor":"ABC010101AB1","rfc_receptor":"XYZ010101XY2",'
+        '"expense_date":"2026-11-05","subtotal":"100.00","iva":"16.00",'
+        '"total":"116.00","currency":"MXN","category":"FOOD",'
+        '"vendor_name":"Taqueria","description":"Working lunch"}'
+    )
     adapter, _ = extractor([FakeResponse(parsed=None, text=payload)])
 
     result = adapter.extract(b"%PDF-1.4", "application/pdf")
 
-    assert result.total == Decimal("10.00")
+    assert result.total == Decimal("116.00")
     assert result.category == Category.FOOD
 
 
@@ -134,3 +145,13 @@ def test_blank_currency_defaults_to_mxn():
     adapter, _ = extractor([FakeResponse(parsed=parsed)])
 
     assert adapter.extract(b"%PDF-1.4", "application/pdf").currency == "MXN"
+
+
+def test_encrypted_pdf_is_unsupported_without_calling_gemini():
+    adapter, _ = extractor([])
+
+    with pytest.raises(DocumentError) as error:
+        adapter.extract(b"%PDF-1.4\n1 0 obj << /Encrypt 2 0 R >>", "application/pdf")
+
+    assert error.value.code == "UNSUPPORTED_DOCUMENT"
+    assert adapter.client.models.calls == []

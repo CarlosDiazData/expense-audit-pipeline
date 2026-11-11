@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -14,6 +15,15 @@ from .domain.policy import evaluate_policy
 from .domain.validation import money, normalize_rfc
 
 UPLOADS_PREFIX = "uploads/"
+LOGGER = logging.getLogger(__name__)
+
+
+def _log(
+    event: str, *, upload_id: str | None = None, source_object: str | None = None, **fields
+) -> None:
+    payload = {"event": event, "upload_id": upload_id, "source_object": source_object}
+    payload.update(fields)
+    LOGGER.info(json.dumps(payload, separators=(",", ":")))
 
 
 def _utcnow() -> datetime:
@@ -90,7 +100,9 @@ def run_processing(payload: dict[str, Any], deps: ProcessorDeps) -> str:
     upload_id, filename = parsed
 
     status = deps.repo.get_status(upload_id)
+    source_object = f"gs://{bucket}/{object_name}"
     if status is not None and status.get("status") == "COMPLETED":
+        _log("processing_skipped_completed", upload_id=upload_id, source_object=source_object)
         return "completed"
 
     attempts = int(status.get("attempts") or 0) if status is not None else 0
@@ -98,6 +110,8 @@ def run_processing(payload: dict[str, Any], deps: ProcessorDeps) -> str:
         deps.repo.mark_failed(upload_id, "RETRY_EXHAUSTED", "Maximum processing attempts reached")
         return "retry_exhausted"
 
+    if status is not None and status.get("original_filename"):
+        filename = str(status["original_filename"])
     deps.repo.set_processing(upload_id, filename)
 
     try:
@@ -107,6 +121,12 @@ def run_processing(payload: dict[str, Any], deps: ProcessorDeps) -> str:
         extracted = deps.extractor.extract(content, mime_type)
     except DocumentError as exc:
         deps.repo.mark_failed(upload_id, exc.code, exc.message)
+        _log(
+            "processing_failed",
+            upload_id=upload_id,
+            source_object=source_object,
+            error_code=exc.code,
+        )
         return "failed"
 
     limits = deps.repo.load_active_limits()
@@ -132,6 +152,7 @@ def run_processing(payload: dict[str, Any], deps: ProcessorDeps) -> str:
             extracted.category.value,
             extracted.expense_date.year,
             extracted.expense_date.month,
+            exclude_upload_id=upload_id,
         )
 
     decision = evaluate_policy(
@@ -155,4 +176,5 @@ def run_processing(payload: dict[str, Any], deps: ProcessorDeps) -> str:
         )
     )
     deps.repo.mark_completed(upload_id)
+    _log("processing_completed", upload_id=upload_id, source_object=source_object)
     return "completed"

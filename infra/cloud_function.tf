@@ -47,7 +47,7 @@ resource "google_cloudfunctions2_function" "processor" {
     event_filters {
       attribute = "name"
       operator  = "match-path-pattern"
-      value     = "uploads/*"
+      value     = "uploads/**"
     }
   }
 

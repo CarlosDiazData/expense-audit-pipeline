@@ -171,8 +171,8 @@ def create_app(
         safe_name = sanitize_filename(filename)
         object_path = f"uploads/{upload_id}/{safe_name}"
         try:
-            storage.upload(object_path, content, content_type)
-            repo.create_pending(upload_id, safe_name)
+            storage.upload(object_path, content, content_type, metadata={"upload_id": upload_id})
+            repo.create_pending(upload_id, filename)
         except Exception as exc:  # noqa: BLE001 - storage or BigQuery failure
             raise HTTPException(status_code=500, detail="Upload failed") from exc
 

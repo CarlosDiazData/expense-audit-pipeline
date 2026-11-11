@@ -63,6 +63,8 @@ class GeminiExtractor:
     def extract(self, content: bytes, mime_type: str) -> ExtractedExpense:
         if not content:
             raise DocumentError("UNSUPPORTED_DOCUMENT", "Document is empty")
+        if mime_type == "application/pdf" and b"/Encrypt" in content:
+            raise DocumentError("UNSUPPORTED_DOCUMENT", "Encrypted documents are not supported")
 
         for attempt in range(1, self.max_retries + 1):
             try:

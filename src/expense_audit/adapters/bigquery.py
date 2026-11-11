@@ -254,21 +254,29 @@ LIMIT 1
         )
         return str(rows[0]["expense_id"]) if rows else None
 
-    def monthly_spend(self, category: str, year: int, month: int) -> Decimal:
-        rows = self._select(
-            f"""\
+    def monthly_spend(
+        self,
+        category: str,
+        year: int,
+        month: int,
+        exclude_upload_id: str | None = None,
+    ) -> Decimal:
+        sql = f"""\
 SELECT COALESCE(SUM(total), 0) AS spend
 FROM {self._expenses}
 WHERE category = @category
   AND DATE_TRUNC(expense_date, MONTH) = DATE(@year, @month, 1)
   AND policy_status != 'NON_DEDUCTIBLE'
-""",
-            [
-                _scalar("category", category, "STRING"),
-                _scalar("year", year, "INT64"),
-                _scalar("month", month, "INT64"),
-            ],
-        )
+"""
+        parameters = [
+            _scalar("category", category, "STRING"),
+            _scalar("year", year, "INT64"),
+            _scalar("month", month, "INT64"),
+        ]
+        if exclude_upload_id is not None:
+            sql += "  AND upload_id != @exclude_upload_id\n"
+            parameters.append(_scalar("exclude_upload_id", exclude_upload_id, "STRING"))
+        rows = self._select(sql, parameters)
         value = rows[0]["spend"] if rows else None
         return Decimal(str(value)) if value is not None else Decimal("0")
 
