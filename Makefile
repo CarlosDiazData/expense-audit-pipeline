@@ -10,7 +10,7 @@ TFVARS ?= terraform.tfvars
 ACCESS_CODE ?=
 UPLOAD_URL ?=
 
-.PHONY: install test lint format samples build deploy e2e clean
+.PHONY: install test lint format samples build deploy tf-validate e2e clean
 
 install:
 	$(PYTHON) -m venv $(VENV)
@@ -43,6 +43,11 @@ build:
 deploy:
 	terraform -chdir=$(TF_DIR) init
 	terraform -chdir=$(TF_DIR) apply -var-file=$(TFVARS) -var="upload_image=$(IMAGE)"
+
+tf-validate:
+	terraform -chdir=$(TF_DIR) init -backend=false -input=false
+	terraform -chdir=$(TF_DIR) validate
+	terraform -chdir=$(TF_DIR) fmt -check -recursive
 
 e2e:
 	UPLOAD_URL="$(UPLOAD_URL)" ACCESS_CODE="$(ACCESS_CODE)" scripts/e2e_demo.sh
