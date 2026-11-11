@@ -1,56 +1,133 @@
 # Expense Audit Pipeline
 
-Serverless expense audit demo on Google Cloud Platform. An employee or provider uploads a
-receipt (PDF, PNG, or JPEG); the pipeline extracts structured data with Gemini Flash, applies a
-deterministic and explainable expense policy, and stores the result in BigQuery.
+**Serverless expense auditing on Google Cloud Platform** — upload a receipt, extract it with Gemini Flash, evaluate an explainable deterministic policy, and store the audited expense in BigQuery.
 
-The design rationale lives in
-[`docs/superpowers/specs/2026-11-11-expense-audit-pipeline-design.md`](docs/superpowers/specs/2026-11-11-expense-audit-pipeline-design.md).
+## Architecture Overview
 
-## Architecture
+```mermaid
+graph TD
+    subgraph Client
+        USER[Employee or provider]
+        BROWSER[Upload page<br/>FastAPI + HTML/JS]
+    end
+
+    subgraph Ingestion
+        RUN[Cloud Run<br/>upload service]
+        SECRET[Secret Manager<br/>shared access code]
+        BUCKET[(GCS landing bucket<br/>uploads/upload_id/file)]
+    end
+
+    subgraph Processing
+        EVENTARC[Eventarc<br/>object finalized]
+        FUNCTION[Cloud Function Gen2<br/>process_ticket]
+        GEMINI[Vertex AI<br/>Gemini Flash]
+    end
+
+    subgraph Data
+        BQ[(BigQuery<br/>expenses / processing_status<br/>category_limits)]
+    end
+
+    USER --> BROWSER
+    BROWSER -->|POST /upload| RUN
+    RUN -->|read access code| SECRET
+    RUN -->|write object + upload_id metadata| BUCKET
+    RUN -->|PENDING status| BQ
+    BUCKET -->|uploads/**| EVENTARC
+    EVENTARC --> FUNCTION
+    FUNCTION -->|structured extraction| GEMINI
+    FUNCTION -->|validation + policy + MERGE| BQ
+    BROWSER -->|GET /status/upload_id| RUN
+    RUN -->|status + result| BQ
+```
+
+## Components
+
+| Component | Technology | Purpose |
+|---|---|---|
+| `app/upload/` | FastAPI + uvicorn | Access-code gate, upload validation, GCS write, status polling |
+| `app/processor/` | Cloud Function Gen2 (Python 3.12) | Idempotent processing: extraction, policy, BigQuery MERGE |
+| `src/expense_audit/domain/` | Pure Python | Models, RFC/amount validation, deterministic policy engine |
+| `src/expense_audit/adapters/` | Google Cloud SDKs | Gemini, BigQuery, GCS, Secret Manager boundaries |
+| `infra/` | Terraform | APIs, bucket, BigQuery, Cloud Run, Function, IAM, secret |
+| `scripts/` | Python + Bash | Synthetic sample generator and end-to-end demo |
+| `samples/` | Synthetic PDFs | Six demo receipts covering each policy outcome |
+
+## Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Language | Python 3.12 |
+| API | FastAPI, uvicorn, Jinja2 |
+| LLM | Vertex AI Gemini Flash (`gemini-2.5-flash`), structured JSON schema |
+| Eventing | Eventarc Cloud Storage finalized trigger |
+| Compute | Cloud Run (upload) and Cloud Functions Gen2 (processor) |
+| Storage | Google Cloud Storage (90-day lifecycle) |
+| Analytics | BigQuery (partitioned and clustered tables) |
+| Secrets | Secret Manager |
+| Infrastructure | Terraform (`hashicorp/google ~> 6.0`) |
+| Tests | pytest (92 tests), ruff |
+
+## Project Structure
 
 ```
-Upload web (Cloud Run, FastAPI)
-        │  POST /upload  (access code + file validation)
-        ▼
-GCS landing bucket  gs://…/uploads/{upload_id}/{filename}
-        │  Eventarc: google.cloud.storage.object.v1.finalized (prefix uploads/)
-        ▼
-Cloud Function Gen2  process_ticket
-  1. idempotency + attempt guard
-  2. Gemini Flash structured extraction
-  3. deterministic validation + policy engine
-  4. BigQuery MERGE + status update
-        ▼
-BigQuery dataset expense_audit
-  expenses · processing_status · category_limits
+expense-audit-pipeline/
+├── app/
+│   ├── upload/                  # FastAPI service, templates, static assets, Dockerfile
+│   └── processor/               # Cloud Function Gen2 entrypoint
+├── src/expense_audit/
+│   ├── domain/                  # Pure models, validation, policy engine
+│   ├── adapters/                # Gemini, BigQuery, GCS, Secret Manager
+│   ├── config.py                # Environment configuration
+│   └── processor.py             # Processing orchestration
+├── infra/                       # Terraform
+│   ├── apis.tf                  # API enablement
+│   ├── storage.tf               # Landing + function-source buckets
+│   ├── bigquery.tf              # Dataset, tables, seed MERGE
+│   ├── cloud_run.tf             # Upload service
+│   ├── cloud_function.tf        # Processor + Eventarc trigger
+│   ├── secrets.tf               # Access code
+│   └── iam.tf                   # Least-privilege service accounts
+├── tests/
+│   ├── unit/                    # Domain and adapter tests
+│   └── integration/             # Processor and upload tests with fakes
+├── samples/                     # Six synthetic invoice PDFs
+├── scripts/                     # generate_samples.py, e2e_demo.sh
+├── docs/superpowers/specs/      # Approved design
+├── odd/tasks/                   # Feature document and evidence log
+└── .github/workflows/ci.yml     # Lint and test only
 ```
 
-- Extraction is the only LLM step. Policy decisions come from deterministic rules with reason
-  codes, so every `VALID`, `SUSPICIOUS`, or `NON_DEDUCTIBLE` outcome is explainable.
-- All writes use DML (`INSERT`/`MERGE`), so the status endpoint reads immediately consistent data.
-- The Looker Studio dashboard is intentionally deferred; the result card and BigQuery console are
-  the demo surface for this phase.
+## Key Features
 
-## Repository layout
+- **Explainable policy** — the LLM extracts; deterministic rules decide. Every outcome carries reason codes and machine-readable details.
+- **Idempotent processing** — BigQuery `MERGE` on `source_object`, `COMPLETED` short-circuit, and a five-attempt guard against retry storms.
+- **Failure isolation** — document-level failures are recorded and swallowed; infrastructure failures propagate so Eventarc retries.
+- **Least-privilege IAM** — separate uploader and processor service accounts; no API keys in code.
+- **Validated uploads** — access code, 10 MB cap, extension plus magic-byte checks, filename sanitization, and per-instance rate limiting.
+- **Bounded cost** — scale-to-zero compute, GCS lifecycle expiry, BigQuery free tier, and cents per demo run.
+- **Demo UI in Spanish** — access code, drag-and-drop upload, two-second polling, and a result card with `VÁLIDO`, `SOSPECHOSO`, or `NO DEDUCIBLE`.
 
-```
-app/upload/          FastAPI upload service, templates, static assets, Dockerfile
-app/processor/       Cloud Function Gen2 entrypoint
-src/expense_audit/   domain (pure rules), adapters (Gemini, BigQuery, GCS, Secret Manager)
-tests/               unit and integration tests with in-memory fakes
-infra/               Terraform
-samples/             six synthetic invoice PDFs
-scripts/             sample generator and e2e demo script
-```
+## Architecture Decisions
+
+| Decision | Why |
+|---|---|
+| Gemini Flash via Vertex AI | Multimodal PDF/image input, structured output, service-account auth without API keys |
+| Deterministic policy engine | The model never decides policy; every result is reproducible and explainable |
+| Cloud Functions Gen2 | Native GCS event trigger through Eventarc with container-based Python 3.12 |
+| Proxied uploads through Cloud Run | Centralized access-code, MIME, and size validation before GCS |
+| `processing_status` in BigQuery | UI polling without Firestore; one data store for the demo |
+| `MERGE` on `source_object` | Duplicate Eventarc deliveries and retries cannot create a second row |
+| Partition by `DATE(created_at)` | Ingestion time always exists; `expense_date` can be missing |
+| Local Terraform state | Reproducible single-user demo; a commented GCS backend is included |
+| Deferred Looker Studio | The data model supports views later without pipeline changes |
 
 ## Prerequisites
 
 - Python 3.12+
 - Terraform 1.6+
 - Docker
-- `gcloud` authenticated with a project that has billing enabled
-- A GCP project with permission to enable APIs and create service accounts
+- `gcloud` authenticated against a project with billing enabled
+- Permissions to enable APIs and create service accounts
 
 ```bash
 gcloud auth login
@@ -59,74 +136,52 @@ gcloud config set project YOUR_PROJECT_ID
 gcloud auth configure-docker us-central1-docker.pkg.dev
 ```
 
-## Local setup
+## Quick Start
+
+> **Note**: Local tests and sample generation need no cloud credentials. Deployment requires an authenticated GCP project.
+
+### 1. Local environment
 
 ```bash
 make install     # creates .venv and installs the package with dev extras
-make test        # pytest
+make test        # 92 tests
 make lint        # ruff check + format check
-make samples     # regenerates the synthetic PDFs
+make samples     # regenerates the six synthetic PDFs
 ```
 
-Environment variables used by the services:
+### 2. Deploy the Artifact Registry repository
 
-| Variable | Service | Default | Purpose |
-|---|---|---|---|
-| `GCP_PROJECT` | both | — | Project ID |
-| `LANDING_BUCKET` | upload | — | GCS landing bucket |
-| `BQ_DATASET` | both | `expense_audit` | BigQuery dataset |
-| `ACCESS_CODE_SECRET` | upload | `expense-audit-access-code` | Secret Manager secret ID |
-| `MAX_UPLOAD_MB` | both | `10` | Upload and download size cap |
-| `RATE_LIMIT_PER_HOUR` | upload | `10` | Best-effort uploads per IP per instance |
-| `GEMINI_MODEL` | processor | `gemini-2.5-flash` | Vertex AI model |
-| `GEMINI_LOCATION` | processor | `us-central1` | Vertex AI location |
-| `COMPANY_RFC` | processor | empty | Enables `RECEPTOR_NOT_COMPANY` when set |
-| `GCS_ALLOWED_BUCKET` | processor | `LANDING_BUCKET` | Bucket accepted by the trigger |
-| `MAX_ATTEMPTS` | processor | `5` | Retry guard before `RETRY_EXHAUSTED` |
+The upload image does not exist on the first apply, so create the repository first:
 
-## Deploy
+```bash
+cp infra/terraform.tfvars.example infra/terraform.tfvars
+# edit project_id, access_code, and optionally company_rfc
+terraform -chdir=infra init
+terraform -chdir=infra apply \
+  -target=google_artifact_registry_repository.upload \
+  -var-file=terraform.tfvars
+```
 
-1. Create the Terraform variables and deploy the Artifact Registry repository first (the image does
-   not exist yet, so a full apply would fail on Cloud Run):
+### 3. Build the image and function source
 
-   ```bash
-   cp infra/terraform.tfvars.example infra/terraform.tfvars
-   # edit project_id, access_code, and optionally company_rfc
-   terraform -chdir=infra init
-   terraform -chdir=infra apply -target=google_artifact_registry_repository.upload \
-     -var-file=terraform.tfvars
-   ```
+```bash
+make build
+```
 
-2. Build and push the upload image, and assemble the Cloud Function source:
+This pushes the Cloud Run image and assembles `build/processor/` for the function source.
 
-   ```bash
-   make build
-   ```
+### 4. Apply the full stack
 
-3. Apply the full stack:
+```bash
+make deploy
+terraform -chdir=infra output
+```
 
-   ```bash
-   make deploy
-   ```
+Terraform seeds `category_limits` with an idempotent `MERGE`, so re-applies are safe.
 
-4. Read the outputs:
+### 5. Run the demo
 
-   ```bash
-   terraform -chdir=infra output
-   terraform -chdir=infra output -raw upload_url
-   ```
-
-`terraform apply` also seeds `category_limits` with a MERGE job, so re-applies are idempotent.
-
-## Demo flow
-
-1. Open the `upload_url` from the Terraform output.
-2. Enter the access code from `terraform.tfvars`.
-3. Upload one of the files in `samples/`.
-4. The page polls `/status/{upload_id}` every two seconds and renders a result card with a
-   `VÁLIDO`, `SOSPECHOSO`, or `NO DEDUCIBLE` badge and the translated reason codes.
-
-Run the full sample sweep against the deployed stack:
+Open the `upload_url` output, enter the access code, and upload a file from `samples/`.
 
 ```bash
 UPLOAD_URL="$(terraform -chdir=infra output -raw upload_url)" \
@@ -135,71 +190,78 @@ PROJECT_ID="your-project-id" BQ_DATASET="expense_audit" \
 make e2e
 ```
 
-Expected outcomes are documented in [`samples/README.md`](samples/README.md). The noisy sample is
-a controlled variant: the script accepts either a completed extraction or `EXTRACTION_FAILED`.
+## Demo Flow
 
-## Policy rules
+1. Open the Cloud Run URL.
+2. Enter the shared access code.
+3. Drag and drop a PDF, PNG, or JPEG receipt.
+4. The page shows `Procesando...` and polls `/status/{upload_id}` every two seconds.
+5. On completion, the result card shows RFC emisor, total, category, a policy badge, and translated reasons.
+6. On failure, the page shows the machine-readable error code with a clear message.
 
-Non-deductible: `INVALID_RFC`, `NON_DEDUCTIBLE_CATEGORY`, `RECEPTOR_NOT_COMPANY`,
-`MISSING_CRITICAL_FIELDS`.
+Expected sample outcomes are documented in [`samples/README.md`](samples/README.md). The noisy variant is a controlled case: the e2e script accepts a completed extraction or `EXTRACTION_FAILED`.
 
-Suspicious: `TOTAL_MISMATCH`, `DATE_IN_FUTURE`, `INVALID_AMOUNT`, `PER_EXPENSE_LIMIT_EXCEEDED`,
-`MONTHLY_BUDGET_EXCEEDED`, `DUPLICATE_EXPENSE`, `CURRENCY_UNSUPPORTED`.
+## Policy Rules
 
-Precedence: any non-deductible finding wins; otherwise any suspicious finding; otherwise valid.
-Limits come from `category_limits` (FOOD 50/500, TRANSPORT 200/2000, SOFTWARE 500/3000,
-LODGING 300/3000, OTHER 100/1000 MXN per expense/month). Non-MXN expenses skip amount rules.
+| Non-deductible | Suspicious |
+|---|---|
+| `INVALID_RFC` | `TOTAL_MISMATCH` |
+| `NON_DEDUCTIBLE_CATEGORY` | `DATE_IN_FUTURE` |
+| `RECEPTOR_NOT_COMPANY` | `INVALID_AMOUNT` |
+| `MISSING_CRITICAL_FIELDS` | `PER_EXPENSE_LIMIT_EXCEEDED` |
+| | `MONTHLY_BUDGET_EXCEEDED` |
+| | `DUPLICATE_EXPENSE` |
+| | `CURRENCY_UNSUPPORTED` |
 
-## Data model
+Precedence: any non-deductible finding wins; otherwise any suspicious finding; otherwise `VALID`. Limits are seeded per category in MXN. Non-MXN expenses skip amount rules.
 
-- `expenses`: one row per `source_object`, partitioned by `DATE(created_at)` and clustered by
-  `policy_status, category`.
-- `processing_status`: `PENDING → PROCESSING → COMPLETED | FAILED`, with `attempts` capped at 5.
-- `category_limits`: active policy limits, seeded by Terraform.
+## Data Model
 
-## Cost controls
+| Table | Purpose |
+|---|---|
+| `expenses` | One row per `source_object`, partitioned by `DATE(created_at)`, clustered by `policy_status, category` |
+| `processing_status` | `PENDING → PROCESSING → COMPLETED \| FAILED`, attempts capped at 5 |
+| `category_limits` | Per-expense and monthly limits per category, seeded by Terraform |
 
-- Cloud Run and Cloud Functions scale to zero; BigQuery and GCS stay in free-tier usage.
-- Landing objects expire after 90 days.
-- Recommended: create a GCP budget alert at $5 USD. Budgets require a billing account ID:
-  `gcloud billing budgets create --billing-account=BILLING_ACCOUNT_ID ...` (see
-  `gcloud billing budgets create --help`).
+All writes use DML (`INSERT`/`MERGE`), so the status endpoint reads immediately consistent data.
 
-## Security
-
-- Shared access code in Secret Manager, compared with `secrets.compare_digest`.
-- Two least-privilege service accounts: `sa-uploader` (object create, dataset editor, secret access)
-  and `sa-processor` (object view, dataset editor, Vertex AI user, Eventarc receiver).
-- Buckets enforce uniform access and public access prevention; objects are never public.
-- Uploads validate extension plus magic bytes, sanitize the filename, and cap size at 10 MB.
-- Logs and `error_message` values never include document content or RFCs.
-
-## Testing
+## Running Tests
 
 ```bash
-make test
-make lint
+make test                                  # pytest
+make lint                                  # ruff check + format check
 terraform -chdir=infra validate
 terraform -chdir=infra fmt -check -recursive
 ```
 
-Unit tests cover validation boundaries and every policy reason. Integration tests use in-memory
-fakes for GCS, BigQuery, Gemini, and Secret Manager, and cover processor idempotency, retry
-exhaustion, failure swallowing vs. infrastructure retries, and upload `401`/`413`/`400`/`202`.
+Unit tests cover validation boundaries and every policy reason code. Integration tests use in-memory fakes for GCS, BigQuery, Gemini, and Secret Manager, and cover idempotency, retry exhaustion, failure swallowing, and upload responses `401`/`413`/`400`/`202`.
 
 ## Troubleshooting
 
-- **Cloud Run revision fails to start**: confirm `make build` pushed the image and that
-  `upload_image` points to it.
-- **Function never triggers**: check the Eventarc trigger filters (`bucket` and `uploads/*`) and
-  that the processor service account has `roles/eventarc.eventReceiver`.
-- **`EXTRACTION_FAILED` repeatedly**: confirm the Vertex AI API is enabled and the model is
-  available in the configured region.
-- **`terraform plan` fails on the function source**: run `make build` before `terraform apply`.
-- **No rows in BigQuery**: check `processing_status.error_code` and Cloud Function logs; document
-  failures are recorded there instead of retrying forever.
+| Symptom | Cause | Fix |
+|---|---|---|
+| Cloud Run revision fails to start | Image missing or wrong tag | Run `make build`; confirm `upload_image` points to the pushed tag |
+| Function never triggers | Eventarc filter mismatch | Confirm the trigger filters `bucket` and `uploads/**`; check `roles/eventarc.eventReceiver` |
+| `EXTRACTION_FAILED` repeatedly | Vertex AI API disabled or model unavailable | Enable `aiplatform.googleapis.com`; verify the model in the configured region |
+| `terraform plan` fails on function source | `build/processor` missing | Run `make build` before `terraform apply` |
+| No rows in BigQuery | Document failure recorded | Check `processing_status.error_code` and Cloud Function logs |
+| Upload returns `503` | Secret Manager access failed | Verify the secret exists and `sa-uploader` has `secretAccessor` |
+| Upload returns `429` | Per-instance rate limit reached | Wait an hour or raise `rate_limit_per_hour` |
 
-## Deferred work
+## Roadmap
 
-Looker Studio views and alerts, email/webhook notifications, and multi-user authentication are out
-of scope for this phase. The data model already supports them without pipeline changes.
+- [x] Event-driven upload, extraction, policy, and BigQuery persistence
+- [x] Deterministic policy engine with regression tests
+- [x] Terraform infrastructure and least-privilege IAM
+- [x] Spanish demo UI and synthetic sample set
+- [ ] Looker Studio dashboard and BigQuery views
+- [ ] Email or webhook alerting
+- [ ] Multi-user authentication
+
+## License
+
+MIT
+
+---
+
+Built with [FastAPI](https://fastapi.tiangolo.com), [Google Cloud Run](https://cloud.google.com/run), [Cloud Functions](https://cloud.google.com/functions), [Vertex AI](https://cloud.google.com/vertex-ai), [BigQuery](https://cloud.google.com/bigquery), [Terraform](https://www.terraform.io) and [Gemini](https://deepmind.google/technologies/gemini/).
