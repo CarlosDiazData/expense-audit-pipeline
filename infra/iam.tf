@@ -49,3 +49,15 @@ resource "google_project_iam_member" "processor_eventarc_receiver" {
   role    = "roles/eventarc.eventReceiver"
   member  = "serviceAccount:${google_service_account.processor.email}"
 }
+
+data "google_project" "current" {
+  project_id = var.project_id
+}
+
+# Eventarc creates a Pub/Sub topic for Cloud Storage triggers; the GCS service
+# agent must be able to publish to it.
+resource "google_project_iam_member" "gcs_service_agent_pubsub_publisher" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:service-${data.google_project.current.number}@gs-project-accounts.iam.gserviceaccount.com"
+}

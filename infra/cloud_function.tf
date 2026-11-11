@@ -51,5 +51,6 @@ resource "google_cloudfunctions2_function" "processor" {
     google_project_service.enabled,
     google_storage_bucket_object.processor,
     google_project_iam_member.processor_eventarc_receiver,
+    google_project_iam_member.gcs_service_agent_pubsub_publisher,
   ]
 }
