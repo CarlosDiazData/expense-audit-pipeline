@@ -18,10 +18,7 @@ class SecretAccessCodeProvider:
         client = self._client or self._default_client()
         response = client.access_secret_version(
             request={
-                "name": (
-                    f"projects/{self._project}/secrets/"
-                    f"{self._secret_name}/versions/latest"
-                )
+                "name": (f"projects/{self._project}/secrets/{self._secret_name}/versions/latest")
             }
         )
         value = response.payload.data.decode("utf-8").strip()
