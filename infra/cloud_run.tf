@@ -49,6 +49,11 @@ resource "google_cloud_run_v2_service" "upload" {
     google_project_service.enabled,
     google_secret_manager_secret_version.access_code,
   ]
+
+  lifecycle {
+    # The provider mirrors the template scaling into a computed top-level block.
+    ignore_changes = [scaling]
+  }
 }
 
 resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
