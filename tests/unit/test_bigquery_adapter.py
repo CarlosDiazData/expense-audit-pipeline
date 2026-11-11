@@ -64,6 +64,8 @@ def test_get_status_returns_row_or_none():
     row = adapter.get_status("u1")
 
     assert row["status"] == "PENDING"
+    assert "ORDER BY updated_at DESC" in client.queries[0][0]
+    assert client.queries[0][1].use_query_cache is False
     assert params(client.queries[0][1])["upload_id"].value == "u1"
     assert adapter.get_status("missing") is None
 
@@ -74,8 +76,8 @@ def test_create_pending_inserts_row():
     adapter.create_pending("u1", "ticket.pdf")
 
     sql, job_config, _ = client.queries[0]
-    assert "INSERT INTO `p.d.expenses`" not in sql
-    assert "processing_status" in sql
+    assert sql.startswith("MERGE `demo-project.expense_audit.processing_status`")
+    assert "WHEN NOT MATCHED THEN INSERT" in sql
     values = params(job_config)
     assert values["upload_id"].value == "u1"
     assert values["original_filename"].value == "ticket.pdf"

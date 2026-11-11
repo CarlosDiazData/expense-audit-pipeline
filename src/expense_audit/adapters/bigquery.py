@@ -108,7 +108,7 @@ class BigQueryRepository:
         self._limits = f"`{project}.{dataset}.category_limits`"
 
     def _select(self, sql: str, parameters: list[Any]) -> list[dict[str, Any]]:
-        config = bigquery.QueryJobConfig(query_parameters=parameters)
+        config = bigquery.QueryJobConfig(query_parameters=parameters, use_query_cache=False)
         job = self._client.query(sql, job_config=config)
         return [dict(row.items()) for row in job.result()]
 
@@ -123,6 +123,7 @@ SELECT upload_id, original_filename, status, attempts, error_code, error_message
        created_at, updated_at
 FROM {self._status}
 WHERE upload_id = @upload_id
+ORDER BY updated_at DESC
 LIMIT 1
 """,
             [_scalar("upload_id", upload_id, "STRING")],
@@ -132,10 +133,16 @@ LIMIT 1
     def create_pending(self, upload_id: str, original_filename: str) -> None:
         self._execute(
             f"""\
-INSERT INTO {self._status}
+MERGE {self._status} AS target
+USING (
+  SELECT @upload_id AS upload_id, @original_filename AS original_filename
+) AS source
+ON target.upload_id = source.upload_id
+WHEN NOT MATCHED THEN INSERT
   (upload_id, original_filename, status, attempts, created_at, updated_at)
 VALUES
-  (@upload_id, @original_filename, 'PENDING', 0, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())
+  (source.upload_id, source.original_filename, 'PENDING', 0,
+   CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP())
 """,
             [
                 _scalar("upload_id", upload_id, "STRING"),
