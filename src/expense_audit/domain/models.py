@@ -37,16 +37,16 @@ class PolicyReason(StrEnum):
 
 
 class ExtractedExpense(BaseModel):
-    rfc_emisor: str | None = None
-    rfc_receptor: str | None = None
-    expense_date: date | None = None
-    subtotal: Decimal | None = None
-    iva: Decimal | None = None
-    total: Decimal | None = None
+    rfc_emisor: str | None
+    rfc_receptor: str | None
+    expense_date: date | None
+    subtotal: Decimal | None
+    iva: Decimal | None
+    total: Decimal | None
     currency: str = "MXN"
-    category: Category = Category.OTHER
-    vendor_name: str | None = None
-    description: str | None = None
+    category: Category
+    vendor_name: str | None
+    description: str | None
 
 
 class CategoryLimit(BaseModel):

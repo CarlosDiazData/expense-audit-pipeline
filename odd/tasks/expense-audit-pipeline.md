@@ -39,7 +39,7 @@ Assumptions (from design section 14): MXN demo invoices; no currency conversion;
 - **T5** Upload web service, HTML/JS UI, tests (S2-S4, S21). Route: inline. Done, commit `b419163`.
 - **T6** Terraform infrastructure and seed (S19, S18). Route: inline. Done, commit `ff00929`.
 - **T7** Sample generator, six synthetic PDFs, e2e script (S20). Route: inline. Done, commit `c9b876a`.
-- **T8** README, final Makefile, CI workflow, final checks (S20). Route: inline. Done, commit `b8a89a6`.
+- **T8** README, final Makefile, CI workflow, final checks (S20). Route: inline. Done, commit `70085ba`.
 
 ## Log
 
@@ -52,3 +52,6 @@ Assumptions (from design section 14): MXN demo invoices; no currency conversion;
 - **L4 (2026-11-11):** Verification evidence observed locally: `pytest` 88 passed; `ruff check` clean; `ruff format --check` 28 files formatted; `terraform validate` success; `terraform fmt -check -recursive` clean. Not run: Docker image build and live GCP deploy (no image push or cloud mutation was authorized in this session).
 - **L5 (2026-11-11):** Delivery forecast: 4743 authored changed lines across 7 work-unit commits, above the ~400-line review budget. Delivery strategy is `ask-on-risk`; PR slicing/chain strategy remains a user decision. No push and no PR were performed.
 - **Risk:** item 2 (access code, Secret Manager, least-privilege IAM), item 5 (Terraform deploy, dependencies, installers), item 6 (live GCP behavior is not covered by local tests).
+- **L6 (2026-11-11):** Independent verification (whole feature, baseline `36bb7d1`) found 2 blockers: (B1) the GCS adapter converted transient read errors into `DocumentError`, preventing Eventarc retries; (B2) the monthly budget double-counted the current expense on retry after a successful MERGE followed by a failed status update. Both were corrected with regression tests `tests/unit/test_gcs_transient.py` and `tests/integration/test_processor_retry.py`.
+- **L7 (2026-11-11):** The correction batch also changed the Eventarc path pattern to `uploads/**` (single `*` matches one segment per Eventarc path patterns), made the e2e script require terminal states and assert expected policy/reasons, preserved the raw uploaded filename while sanitizing only the object path, aligned `ExtractedExpense` with required-nullable design fields, rejected encrypted PDFs as `UNSUPPORTED_DOCUMENT`, added `upload_id` object metadata plus JSON logs, and untracked the unrelated `.atl/` cache.
+- **L8 (2026-11-11):** Post-correction evidence: `pytest` 92 passed; `ruff check` clean; `ruff format --check` 30 files; `terraform validate` success; `terraform fmt -check` clean; `bash -n scripts/e2e_demo.sh` OK. Still not run: Docker build and live GCP deploy/e2e.

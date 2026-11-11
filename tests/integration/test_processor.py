@@ -103,8 +103,9 @@ class FakeRepo:
     def find_duplicate(self, rfc_emisor, total, expense_date, upload_id):
         return self.duplicate
 
-    def monthly_spend(self, category, year, month):
+    def monthly_spend(self, category, year, month, exclude_upload_id=None):
         self.monthly_calls += 1
+        self.monthly_exclusion = exclude_upload_id
         return self.spend
 
     def merge_expense(self, row):
@@ -189,6 +190,7 @@ def test_happy_path_completes_and_merges_one_valid_expense():
     assert row["rfc_emisor"] == "ABC010101AB1"
     assert row["category"] == "FOOD"
     assert repo.monthly_calls == 1
+    assert repo.monthly_exclusion == "u1"
 
 
 def test_duplicate_delivery_short_circuits_on_completed():
