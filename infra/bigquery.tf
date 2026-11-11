@@ -69,16 +69,16 @@ resource "google_bigquery_table" "category_limits" {
   table_id   = "category_limits"
 
   schema = jsonencode([
-    { name = "category", type = "STRING", mode = "REQUIRED" },
-    { name = "per_expense_limit", type = "NUMERIC", mode = "REQUIRED" },
-    { name = "monthly_limit", type = "NUMERIC", mode = "REQUIRED" },
-    { name = "currency", type = "STRING", mode = "REQUIRED" },
-    { name = "active", type = "BOOL", mode = "REQUIRED" },
+    { name = "category", type = "STRING", mode = "NULLABLE" },
+    { name = "per_expense_limit", type = "NUMERIC", mode = "NULLABLE" },
+    { name = "monthly_limit", type = "NUMERIC", mode = "NULLABLE" },
+    { name = "currency", type = "STRING", mode = "NULLABLE" },
+    { name = "active", type = "BOOLEAN", mode = "NULLABLE" },
   ])
 }
 
 resource "google_bigquery_job" "seed_category_limits" {
-  job_id   = "seed-expense-audit-category-limits-v2"
+  job_id   = "seed-expense-audit-category-limits-v3"
   location = var.region
 
   query {
@@ -90,7 +90,7 @@ resource "google_bigquery_job" "seed_category_limits" {
       UNION ALL SELECT 'OTHER', NUMERIC '100.00', NUMERIC '1000.00', 'MXN', TRUE
     SQL
     use_legacy_sql    = false
-    write_disposition = "WRITE_TRUNCATE"
+    write_disposition = "WRITE_TRUNCATE_DATA"
 
     destination_table {
       project_id = var.project_id
