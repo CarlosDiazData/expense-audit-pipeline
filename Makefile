@@ -8,6 +8,7 @@ IMAGE ?= $(REGION)-docker.pkg.dev/$(PROJECT_ID)/$(REPOSITORY)/upload:latest
 TF_DIR ?= infra
 TFVARS ?= terraform.tfvars
 ACCESS_CODE ?=
+UPLOAD_URL ?=
 
 .PHONY: install test lint format samples build deploy e2e clean
 
@@ -44,7 +45,7 @@ deploy:
 	terraform -chdir=$(TF_DIR) apply -var-file=$(TFVARS) -var="upload_image=$(IMAGE)"
 
 e2e:
-	ACCESS_CODE="$(ACCESS_CODE)" scripts/e2e_demo.sh
+	UPLOAD_URL="$(UPLOAD_URL)" ACCESS_CODE="$(ACCESS_CODE)" scripts/e2e_demo.sh
 
 clean:
 	rm -rf build .pytest_cache .ruff_cache
