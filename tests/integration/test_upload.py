@@ -82,9 +82,9 @@ def test_index_renders_spanish_upload_page():
     assert "Código de acceso" in response.text
 
 
-def test_healthz():
+def test_health():
     client, _ = build_client()
-    assert client.get("/healthz").json() == {"status": "ok"}
+    assert client.get("/health").json() == {"status": "ok"}
 
 
 def test_wrong_access_code_is_rejected():

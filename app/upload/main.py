@@ -135,6 +135,7 @@ def create_app(
             context={"max_upload_mb": settings.max_upload_mb},
         )
 
+    @app.get("/health")
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
         return {"status": "ok"}
