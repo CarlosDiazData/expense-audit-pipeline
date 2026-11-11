@@ -39,15 +39,11 @@ resource "google_cloudfunctions2_function" "processor" {
     retry_policy          = "RETRY_POLICY_RETRY"
     service_account_email = google_service_account.processor.email
 
+    # Direct Cloud Storage events only support the bucket filter. The processor
+    # rejects objects outside uploads/ before reading them.
     event_filters {
       attribute = "bucket"
       value     = google_storage_bucket.landing.name
-    }
-
-    event_filters {
-      attribute = "name"
-      operator  = "match-path-pattern"
-      value     = "uploads/**"
     }
   }
 

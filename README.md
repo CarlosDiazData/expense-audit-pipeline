@@ -241,7 +241,7 @@ Unit tests cover validation boundaries and every policy reason code. Integration
 | Symptom | Cause | Fix |
 |---|---|---|
 | Cloud Run revision fails to start | Image missing or wrong tag | Run `make build`; confirm `upload_image` points to the pushed tag |
-| Function never triggers | Eventarc filter mismatch | Confirm the trigger filters `bucket` and `uploads/**`; check `roles/eventarc.eventReceiver` |
+| Function never triggers | Eventarc filter mismatch | Confirm the trigger filters the landing bucket; the processor enforces the `uploads/` prefix in code. Check `roles/eventarc.eventReceiver` |
 | `EXTRACTION_FAILED` repeatedly | Vertex AI API disabled or model unavailable | Enable `aiplatform.googleapis.com`; verify the model in the configured region |
 | `terraform plan` fails on function source | `build/processor` missing | Run `make build` before `terraform apply` |
 | No rows in BigQuery | Document failure recorded | Check `processing_status.error_code` and Cloud Function logs |
