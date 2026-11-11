@@ -31,7 +31,7 @@ samples:
 	$(BIN)/python scripts/generate_samples.py
 
 build:
-	docker build -t $(IMAGE) app/upload
+	docker build -f app/upload/Dockerfile -t $(IMAGE) .
 	docker push $(IMAGE)
 	rm -rf build/processor
 	mkdir -p build/processor

@@ -1,0 +1,17 @@
+project_id = "your-gcp-project-id"
+region     = "us-central1"
+
+# Optional: enables the RECEPTOR_NOT_COMPANY rule when set.
+company_rfc = ""
+
+gemini_model = "gemini-2.5-flash"
+
+# Minimum 12 characters; stored in Secret Manager.
+access_code = "change-this-demo-code"
+
+max_upload_mb      = 10
+rate_limit_per_hour = 10
+
+# Optional overrides:
+# upload_image = "us-central1-docker.pkg.dev/PROJECT/expense-audit/upload:latest"
+# processor_source_dir = "../build/processor"
