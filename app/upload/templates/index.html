@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Auditoría de Gastos</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="card">
+    <header>
+      <p class="eyebrow">Demo de auditoría</p>
+      <h1>Auditoría de Gastos</h1>
+      <p class="subtitle">
+        Sube un ticket o factura en PDF, PNG o JPEG (máximo {{ max_upload_mb }} MB).
+      </p>
+    </header>
+
+    <form id="upload-form">
+      <label for="code">Código de acceso</label>
+      <input id="code" name="code" type="password" autocomplete="off" required>
+
+      <label class="dropzone" id="dropzone" for="file">
+        <span id="dropzone-label">Arrastra tu archivo aquí o haz clic para seleccionarlo</span>
+        <input id="file" name="file" type="file" accept=".pdf,.png,.jpg,.jpeg" required>
+      </label>
+
+      <button id="submit" type="submit">Enviar ticket</button>
+    </form>
+
+    <section id="progress" class="progress hidden" aria-live="polite">
+      <div class="spinner" aria-hidden="true"></div>
+      <p id="progress-text">Procesando...</p>
+    </section>
+
+    <section id="error" class="message error hidden" aria-live="assertive"></section>
+
+    <section id="result" class="result hidden" aria-live="polite">
+      <div class="result-head">
+        <span id="badge" class="badge"></span>
+        <span id="result-total" class="total"></span>
+      </div>
+      <dl>
+        <dt>RFC emisor</dt><dd id="result-rfc">—</dd>
+        <dt>Categoría</dt><dd id="result-category">—</dd>
+        <dt>Fecha</dt><dd id="result-date">—</dd>
+      </dl>
+      <ul id="reasons" class="reasons"></ul>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
