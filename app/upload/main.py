@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 import secrets
 import threading
@@ -21,6 +22,8 @@ from expense_audit.adapters.bigquery import BigQueryRepository
 from expense_audit.adapters.gcs import GcsStorage
 from expense_audit.adapters.secrets import SecretAccessCodeProvider
 from expense_audit.config import Settings
+
+LOGGER = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -175,6 +178,7 @@ def create_app(
             storage.upload(object_path, content, content_type, metadata={"upload_id": upload_id})
             repo.create_pending(upload_id, filename)
         except Exception as exc:  # noqa: BLE001 - storage or BigQuery failure
+            LOGGER.exception("Upload failed for %s", object_path)
             raise HTTPException(status_code=500, detail="Upload failed") from exc
 
         return JSONResponse(

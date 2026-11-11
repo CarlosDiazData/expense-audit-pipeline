@@ -61,3 +61,15 @@ resource "google_project_iam_member" "gcs_service_agent_pubsub_publisher" {
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:service-${data.google_project.current.number}@gs-project-accounts.iam.gserviceaccount.com"
 }
+
+resource "google_project_iam_member" "uploader_bigquery_job_user" {
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${google_service_account.uploader.email}"
+}
+
+resource "google_project_iam_member" "processor_bigquery_job_user" {
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${google_service_account.processor.email}"
+}
