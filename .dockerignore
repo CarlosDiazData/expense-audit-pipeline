@@ -1,0 +1,11 @@
+.git
+.venv
+.pytest_cache
+.ruff_cache
+build
+infra/.terraform
+tests
+docs
+odd
+samples
+scripts
