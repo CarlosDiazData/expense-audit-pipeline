@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import Callable
 from typing import Any
@@ -9,6 +10,8 @@ from pydantic import ValidationError
 
 from ..domain.errors import DocumentError
 from ..domain.models import ExtractedExpense
+
+LOGGER = logging.getLogger(__name__)
 
 EXTRACTION_PROMPT = """\
 You extract structured data from a single Mexican expense receipt (factura or ticket).
@@ -87,6 +90,7 @@ class GeminiExtractor:
                 if attempt < self.max_retries and is_transient_error(exc):
                     self._sleep(self.backoff_seconds * (2 ** (attempt - 1)))
                     continue
+                LOGGER.warning("Gemini extraction failed: %s: %s", type(exc).__name__, exc)
                 raise DocumentError("EXTRACTION_FAILED", "Extraction failed") from exc
 
         raise DocumentError("EXTRACTION_FAILED", "Extraction failed")
@@ -103,6 +107,7 @@ class GeminiExtractor:
             if text:
                 return GeminiExtractor._normalized(ExtractedExpense.model_validate_json(text))
         except ValidationError as exc:
+            LOGGER.warning("Gemini schema validation failed: %s", exc)
             raise DocumentError(
                 "EXTRACTION_FAILED", "Extraction did not match the expected schema"
             ) from exc
