@@ -7,7 +7,7 @@ set -euo pipefail
 : "${ACCESS_CODE:?Set ACCESS_CODE to the demo access code}"
 
 SAMPLES_DIR="${SAMPLES_DIR:-samples}"
-MAX_POLLS="${MAX_POLLS:-60}"
+MAX_POLLS="${MAX_POLLS:-150}"
 POLL_SECONDS="${POLL_SECONDS:-2}"
 
 json_field() {
