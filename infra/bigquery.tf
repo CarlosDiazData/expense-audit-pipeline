@@ -78,33 +78,25 @@ resource "google_bigquery_table" "category_limits" {
 }
 
 resource "google_bigquery_job" "seed_category_limits" {
-  job_id   = "seed-expense-audit-category-limits"
+  job_id   = "seed-expense-audit-category-limits-v2"
   location = var.region
 
   query {
-    query          = <<-SQL
-      MERGE `${var.project_id}.${local.dataset_id}.category_limits` AS target
-      USING (
-        SELECT * FROM UNNEST([
-          STRUCT('FOOD' AS category, NUMERIC '50.00' AS per_expense_limit, NUMERIC '500.00' AS monthly_limit, 'MXN' AS currency, TRUE AS active),
-          STRUCT('TRANSPORT', NUMERIC '200.00', NUMERIC '2000.00', 'MXN', TRUE),
-          STRUCT('SOFTWARE', NUMERIC '500.00', NUMERIC '3000.00', 'MXN', TRUE),
-          STRUCT('LODGING', NUMERIC '300.00', NUMERIC '3000.00', 'MXN', TRUE),
-          STRUCT('OTHER', NUMERIC '100.00', NUMERIC '1000.00', 'MXN', TRUE)
-        ])
-      ) AS source
-      ON target.category = source.category
-      WHEN MATCHED THEN UPDATE SET
-        per_expense_limit = source.per_expense_limit,
-        monthly_limit = source.monthly_limit,
-        currency = source.currency,
-        active = source.active
-      WHEN NOT MATCHED THEN INSERT
-        (category, per_expense_limit, monthly_limit, currency, active)
-      VALUES
-        (source.category, source.per_expense_limit, source.monthly_limit, source.currency, source.active)
+    query             = <<-SQL
+      SELECT 'FOOD' AS category, NUMERIC '50.00' AS per_expense_limit, NUMERIC '500.00' AS monthly_limit, 'MXN' AS currency, TRUE AS active
+      UNION ALL SELECT 'TRANSPORT', NUMERIC '200.00', NUMERIC '2000.00', 'MXN', TRUE
+      UNION ALL SELECT 'SOFTWARE', NUMERIC '500.00', NUMERIC '3000.00', 'MXN', TRUE
+      UNION ALL SELECT 'LODGING', NUMERIC '300.00', NUMERIC '3000.00', 'MXN', TRUE
+      UNION ALL SELECT 'OTHER', NUMERIC '100.00', NUMERIC '1000.00', 'MXN', TRUE
     SQL
-    use_legacy_sql = false
+    use_legacy_sql    = false
+    write_disposition = "WRITE_TRUNCATE"
+
+    destination_table {
+      project_id = var.project_id
+      dataset_id = local.dataset_id
+      table_id   = "category_limits"
+    }
   }
 
   depends_on = [google_bigquery_table.category_limits]
